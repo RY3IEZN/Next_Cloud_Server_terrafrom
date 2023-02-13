@@ -52,17 +52,17 @@ resource "azurerm_network_security_group" "NeekTech-NSG" {
   }
 }
 
-# create the rules for the nsg
+# # create the rules for the nsg
 resource "azurerm_network_security_rule" "NeekTech_Nsg_Rule" {
   name                        = "NeekTech_Nsg_Rule"
   priority                    = 100
   direction                   = "Inbound"
   access                      = "Allow"
-  protocol                    = "*"
+  protocol                    = "Tcp"
   source_port_range           = "*"
-  destination_port_range      = "*"
+  destination_port_range      = "443"
   source_address_prefix       = "*"
-  destination_address_prefix  = "*"
+  destination_address_prefix  = "192.168.1.4"
   resource_group_name         = azurerm_resource_group.NeekTech-rg.name
   network_security_group_name = azurerm_network_security_group.NeekTech-NSG.name
 }
@@ -79,6 +79,20 @@ resource "azurerm_public_ip" "NeekTech-ip" {
   resource_group_name = azurerm_resource_group.NeekTech-rg.name
   location            = azurerm_resource_group.NeekTech-rg.location
   allocation_method   = "Dynamic"
+  # sku = "Standard"
+
+  tags = {
+    environment = "dev"
+  }
+}
+
+# create a public IP for the bastion
+resource "azurerm_public_ip" "NeekTech-bastion-ip" {
+  name                = "NeekTech-bastion-ip"
+  resource_group_name = azurerm_resource_group.NeekTech-rg.name
+  location            = azurerm_resource_group.NeekTech-rg.location
+  allocation_method   = "Static"
+  sku = "Standard"
 
   tags = {
     environment = "dev"
@@ -144,6 +158,27 @@ resource "azurerm_linux_virtual_machine" "NeekTech-vm" {
 
   tags = {
     enviroment : "dev"
+  }
+}
+
+# create a bastion subnet
+resource "azurerm_subnet" "NeekTech-bastion" {
+  name                 = "AzureBastionSubnet"
+  resource_group_name  = azurerm_resource_group.NeekTech-rg.name
+  virtual_network_name = azurerm_virtual_network.NeekTech-vn.name
+  address_prefixes     = ["192.168.2.0/24"]
+}
+
+# create a bastion host
+resource "azurerm_bastion_host" "NeekTech_Bastion_Host" {
+  name                = "NeekTech_Bastion_Host"
+  location            = azurerm_resource_group.NeekTech-rg.location
+  resource_group_name = azurerm_resource_group.NeekTech-rg.name
+
+  ip_configuration {
+    name                 = "configuration"
+    subnet_id            = azurerm_subnet.NeekTech-bastion.id
+    public_ip_address_id = azurerm_public_ip.NeekTech-bastion-ip.id
   }
 }
 
